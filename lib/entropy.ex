@@ -16,6 +16,7 @@ defmodule Entropy do
       # Start the endpoint when the application starts
       supervisor(Entropy.Endpoint, []),
       supervisor(Entropy.Manager, []),
+      supervisor(Entropy.Skynet, []),
       worker(Entropy.Bank, [])
       # Start your own worker by calling: Entropy.Worker.start_link(arg1, arg2, arg3)
       # worker(Entropy.Worker, [arg1, arg2, arg3]),

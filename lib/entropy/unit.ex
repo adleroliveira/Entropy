@@ -33,4 +33,8 @@ defmodule Entropy.Unit do
   def numbers do
     @numbers
   end
+
+  def valid?({color, number}) do
+    Enum.member?(@colors, color) and Enum.member?(@numbers, number)
+  end
 end

@@ -41,8 +41,16 @@ defmodule Entropy.Bank do
     GenServer.call(__MODULE__, :info)
   end
 
+  def payout(user_id, amount) do
+    GenServer.call(__MODULE__, {:payout, user_id, amount})
+  end
+
   def start_link do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
+  end
+
+  def account_price do
+    @account_price
   end
 
   def init(_) do
@@ -86,29 +94,54 @@ defmodule Entropy.Bank do
     end
   end
 
+  def handle_call({:payout, user_id, amount}, _from, state) do
+    value = get_unit_value(state) |> Kernel.*(amount)
+    User.add_funds(user_id, value)
+    {:reply, :ok, %{state | currency: state.currency - value}}
+  end
+
   def handle_call({:create_units, ammount}, _from, state) do
     Manager.create_unit(ammount)
     {:reply, :ok, %{state | units: state.units + ammount}}
   end
 
   def handle_call(:info, _from, state) do
+    summary = accounts_summary(state)
+    units_on_bank = summary
+    |> Enum.reduce(0, fn({{_, _}, num}, total) -> total + num end)
     info = %{
       currency: state.currency,
       units: state.units,
-      unit_value: state.currency / state.units,
-      accounts: accounts_summary(state)
+      unit_value: get_unit_value(state),
+      accounts: summary,
+      units_on_bank_accounts: units_on_bank
     }
     {:reply, info, state}
   end
 
+  defp get_unit_value(state) do
+    cond do
+      state.units > 0 -> state.currency / state.units
+      true -> 0
+    end
+  end
+
   defp new_account(user_id, color, number, state) do
-    bank_account = get_account(color, number, state)
-    case account_balance(bank_account) do
-      0 -> {:reply, {:error, "Not enough funds"}, state}
-      _ ->
-        {:ok, _pid} = Manager.create_account(Account.new(user_id, color, number))
-        Account.release_unit(bank_account.id |> String.to_atom)
-        {:reply, :ok, %{state | currency: state.currency + @account_price}}
+    case Unit.valid?({color, number}) do
+      true ->
+        bank_account = get_account(color, number, state)
+        case account_balance(bank_account) do
+          0 -> {:reply, {:error, "Not enough funds"}, state}
+          _ ->
+            case User.deduct(user_id, @account_price) do
+              :ok ->
+                {:ok, _pid} = Manager.create_account(Account.new(user_id, color, number))
+                Account.release_unit(bank_account.id |> String.to_atom)
+                {:reply, :ok, %{state | currency: state.currency + @account_price}}
+              other -> {:reply, other, state}
+            end
+        end
+      _ -> {:reply, {:error, :invalid_unit}, state}
     end
   end
 
@@ -116,7 +149,7 @@ defmodule Entropy.Bank do
     get_accounts(state)
     |> Enum.map(
       fn(account) ->
-        {{account.color_filter, account.number_filter}, account_balance(account)}
+        {{account.color, account.number}, account_balance(account)}
       end)
   end
 
@@ -133,7 +166,8 @@ defmodule Entropy.Bank do
     |> Enum.map(&Account.info/1)
     |> Enum.filter(
       fn(account) ->
-        account.color_filter == color and account.number_filter == number
+        account.color == color
+        and account.number == number
       end)
     account
   end

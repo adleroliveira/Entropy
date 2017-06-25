@@ -2,6 +2,7 @@ defmodule Entropy.Account do
   use GenServer
   alias Entropy.Unit
   alias Entropy.Manager
+  alias Entropy.Bank
   require Logger
 
   @die_after 1000 * 60 * 2 # 2 minutes
@@ -10,12 +11,13 @@ defmodule Entropy.Account do
     :id,
     :user_id,
     :balance,
-    :color_filter,
-    :number_filter,
+    :color,
+    :number,
     :color_change,
     :number_change,
     created: :os.system_time(:seconds),
-    type: :user
+    type: :user,
+    history: []
   ]
 
   def new(color, number, :bank) do
@@ -23,8 +25,8 @@ defmodule Entropy.Account do
       id: UUID.uuid4(),
       user_id: :bank,
       balance: :queue.new,
-      color_filter: color,
-      number_filter: number,
+      color: color,
+      number: number,
       color_change: Unit.get_rnd_color,
       number_change: Unit.get_rnd_number,
       type: :bank
@@ -36,8 +38,8 @@ defmodule Entropy.Account do
       id: UUID.uuid4(),
       user_id: user_id,
       balance: :queue.new,
-      color_filter: color,
-      number_filter: number,
+      color: color,
+      number: number,
       color_change: Unit.get_rnd_color,
       number_change: Unit.get_rnd_number,
       type: :user
@@ -85,25 +87,24 @@ defmodule Entropy.Account do
 
   def handle_info({:unit, unit}, state) do
     state = cond do
-      unit.color == state.color_filter and unit.number == state.number_filter ->
+      unit.color == state.color and unit.number == state.number ->
         Logger.debug "Account #{state.id} recieved a unit and added to its balance"
-        %{ state | balance: :queue.in(unit, state.balance)}
+        %{ state |
+          balance: :queue.in(unit, state.balance),
+          history: ["Yey! Unit Match" | state.history]
+        }
       true ->
         Manager.forward(transform_unit(unit, state), state.id |> String.to_atom)
         Logger.debug "Account #{state.id} recieved a unit and forwarded"
-        state
+        %{ state | history: ["Received #{unit.color}, #{unit.number}" | state.history]}
     end
     {:noreply, state}
   end
 
   def handle_info(:die, state) do
-    :queue.to_list(state.balance)
-    |> Enum.each(
-      fn(unit) ->
-        Manager.forward(
-          transform_unit(unit, state),
-          state.id |> String.to_atom)
-      end)
+    units = :queue.to_list(state.balance)
+    Bank.payout(state.user_id, length(units))
+    units |> Enum.each(&Manager.send_to_bank_account/1)
     {:stop, :normal, state}
   end
 

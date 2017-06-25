@@ -2,6 +2,8 @@ defmodule Entropy.Manager do
   use Supervisor
   alias Entropy.Account
   alias Entropy.Unit
+  alias Entropy.Bank
+  require Logger
 
   def create_account do
     Supervisor.start_child(__MODULE__, [])
@@ -34,6 +36,19 @@ defmodule Entropy.Manager do
     account = Account.info(random_acount())
     account_process = account.id |> String.to_atom
     send_unit(account_process, unit)
+  end
+
+  def send_to_bank_account(unit) do
+    Logger.debug "Sending unit of color: #{unit.color} and number #{unit.number} to bank account"
+    Bank.accounts()
+    |> Enum.find(
+      fn(account) ->
+        account.color == unit.color
+        and account.number == unit.number
+      end)
+    |> Map.get(:id)
+    |> String.to_atom
+    |> send_unit(unit)
   end
 
   def forward(unit, from_account) do
