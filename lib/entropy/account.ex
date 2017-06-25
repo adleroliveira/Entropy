@@ -62,8 +62,7 @@ defmodule Entropy.Account do
     )
   end
 
-  def terminate(reason, _status) do
-    IO.puts "Asked to stop because #{inspect reason}"
+  def terminate(_reason, _status) do
     :ok 
   end
 
@@ -88,14 +87,14 @@ defmodule Entropy.Account do
   def handle_info({:unit, unit}, state) do
     state = cond do
       unit.color == state.color and unit.number == state.number ->
-        Logger.debug "Account #{state.id} recieved a unit and added to its balance"
+        # Logger.debug "Account #{state.id} recieved a unit and added to its balance"
         %{ state |
           balance: :queue.in(unit, state.balance),
           history: ["Yey! Unit Match" | state.history]
         }
       true ->
         Manager.forward(transform_unit(unit, state), state.id |> String.to_atom)
-        Logger.debug "Account #{state.id} recieved a unit and forwarded"
+        # Logger.debug "Account #{state.id} recieved a unit and forwarded"
         %{ state | history: ["Received #{unit.color}, #{unit.number}" | state.history]}
     end
     {:noreply, state}

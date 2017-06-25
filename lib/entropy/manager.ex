@@ -39,7 +39,6 @@ defmodule Entropy.Manager do
   end
 
   def send_to_bank_account(unit) do
-    Logger.debug "Sending unit of color: #{unit.color} and number #{unit.number} to bank account"
     Bank.accounts()
     |> Enum.find(
       fn(account) ->

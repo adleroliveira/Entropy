@@ -7,7 +7,11 @@ defmodule Entropy.Skynet do
   end
 
   def create_bot do
-    Supervisor.start_child(__MODULE__, [])
+    case Supervisor.start_child(__MODULE__, []) do
+      {:ok, pid} -> {:ok, pid}
+      {:error, {:already_started, pid}} -> {:ok, pid}
+      other -> other
+    end
   end
 
   def init(:ok) do
