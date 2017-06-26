@@ -15,12 +15,16 @@ defmodule Entropy.Router do
 
   scope "/", Entropy do
     pipe_through :browser # Use the default browser stack
-
     get "/", PageController, :index
   end
 
   # Other scopes may use custom stacks.
-  # scope "/api", Entropy do
-  #   pipe_through :api
-  # end
+  scope "/api", Entropy do
+    pipe_through :api
+    get "/bank", BankController, :index
+    get "/accounts/:username", AccountController, :accounts
+    get "/users", UserController, :index
+    get "/ranking", UserController, :ranking
+    get "/users/:username", UserController, :show
+  end
 end

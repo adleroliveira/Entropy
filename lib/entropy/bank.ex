@@ -96,7 +96,7 @@ defmodule Entropy.Bank do
 
   def handle_call({:payout, user_id, amount}, _from, state) do
     value = get_unit_value(state) |> Kernel.*(amount)
-    User.add_funds(user_id, value)
+    User.credit(user_id, value, "payout")
     {:reply, :ok, %{state | currency: state.currency - value}}
   end
 
@@ -110,8 +110,8 @@ defmodule Entropy.Bank do
     units_on_bank = summary
     |> Enum.reduce(0, fn({{_, _}, num}, total) -> total + num end)
     info = %{
-      currency: state.currency,
-      units: state.units,
+      balance: state.currency,
+      total_units: state.units,
       unit_value: get_unit_value(state),
       accounts: summary,
       units_on_bank_accounts: units_on_bank
@@ -133,7 +133,7 @@ defmodule Entropy.Bank do
         case account_balance(bank_account) do
           0 -> {:reply, {:error, "Not enough funds"}, state}
           _ ->
-            case User.deduct(user_id, @account_price) do
+            case User.debit(user_id, @account_price, "account purchase") do
               :ok ->
                 {:ok, _pid} = Manager.create_account(Account.new(user_id, color, number))
                 Account.release_unit(bank_account.id |> String.to_atom)
