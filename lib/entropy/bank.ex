@@ -119,6 +119,20 @@ defmodule Entropy.Bank do
     {:reply, info, state}
   end
 
+  def export(%{:accounts => accounts} = bank_info) do
+    transformed = accounts
+    |> Enum.sort(fn({_, b1}, {_, b2}) -> b1 > b2 end)
+    |> Enum.map(
+      fn({{color, number}, amount}) ->
+        %{
+          color: color,
+          number: number,
+          amount: amount
+        }
+      end)
+    bank_info |> Map.put(:accounts, transformed)
+  end
+
   defp get_unit_value(state) do
     cond do
       state.units > 0 -> state.currency / state.units

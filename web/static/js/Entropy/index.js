@@ -9,7 +9,6 @@ export default class Entropy extends Component {
     return(
       <div>
         <Header />
-        <Realtime />
         <Navigation />
         <Empty />
       </div>

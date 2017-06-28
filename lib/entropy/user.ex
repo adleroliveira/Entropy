@@ -127,6 +127,18 @@ defmodule Entropy.User do
     users |> Enum.map(&from_record/1)
   end
 
+  def valid_password(username, password) do
+    case get_user(username) do
+      {:user, user} ->
+        if checkpw(password, user.password_hash) do
+          {:user, user}
+        else
+          :unauthorized
+        end
+      other -> other
+    end
+  end
+
   defp save(user) do
     case :mnesia.transaction(fn ->
       :mnesia.write({
