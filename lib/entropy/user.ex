@@ -174,7 +174,7 @@ defmodule Entropy.User do
       password_hash: pass,
       transactions: transactions,
       balance: get_balance(transactions),
-      investiment: investment,
+      investment: investment,
       return: return,
       roi: roi(investment, return)
     }
